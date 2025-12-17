@@ -31,8 +31,8 @@ export default async function handler(req, res) {
     // --- LOGIC DETEKSI DI SINI ---
 
     // 1. ORDERQUOTA (Settingan Baru)
-    if (pkg.includes("orderquota")) {
-      source = "OrderQuota QRIS";
+    if (pkg.includes("orderkuota")) {
+      source = "OrderKuota QRIS";
       icon = "🏪";
     }
     // 2. GOPAY MERCHANT / GOBIZ
@@ -116,3 +116,4 @@ _${message}_
     return res.status(500).json({ status: 'error', message: 'Gagal memproses data' });
   }
 }
+

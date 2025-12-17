@@ -22,26 +22,35 @@ export default async function handler(req, res) {
   try {
     // 5. Logic Deteksi Sumber Aplikasi & QRIS
     let source = "Unknown App";
-    let icon = "📱";
+    let icon = "💵";
     
     // Normalisasi teks agar pencarian lebih mudah (huruf kecil semua)
     const pkg = package_name ? package_name.toLowerCase() : "";
     const msg = message ? message.toLowerCase() : "";
 
-    // DETEKSI GOPAY MERCHANT / GOBIZ / QRIS
-    if (pkg.includes("gobiz")) {
+    // --- LOGIC DETEKSI DI SINI ---
+
+    // 1. ORDERQUOTA (Settingan Baru)
+    if (pkg.includes("orderquota")) {
+      source = "OrderQuota QRIS";
+      icon = "🏪";
+    }
+    // 2. GOPAY MERCHANT / GOBIZ
+    else if (pkg.includes("gobiz")) {
       source = "GoPay Merchant (GoBiz)";
       icon = "🏪";
     } 
+    // 3. GOPAY QRIS (Via App Gojek Biasa)
     else if ((pkg.includes("gojek") || pkg.includes("gopay")) && (msg.includes("qris") || msg.includes("merchant"))) {
       source = "GoPay QRIS";
       icon = "🏪";
     }
-    // DETEKSI LAINNYA
+    // 4. GOPAY PERSONAL
     else if (pkg.includes("gojek") || pkg.includes("gopay")) {
       source = "GOPAY Personal";
       icon = "🟢";
     }
+    // 5. E-WALLET & BANK LAIN
     else if (pkg.includes("dana")) {
       source = "DANA";
       icon = "🔵";
@@ -71,7 +80,6 @@ export default async function handler(req, res) {
     }
 
     // 6. Logic Parsing Nominal (Mengambil angka Rupiah)
-    // Mencari format Rp 10.000, Rp10.000, atau 10.000 masuk
     const nominalMatch = message.match(/Rp\s?[\d,.]+/i);
     let nominal = nominalMatch ? nominalMatch[0] : "Cek Manual";
 

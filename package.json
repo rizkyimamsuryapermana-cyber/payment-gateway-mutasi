@@ -8,7 +8,8 @@
   },
   "dependencies": {},
   "engines": {
-    "node": "25.x"
+    "node": "20.x"
   }
 }
+
 

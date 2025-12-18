@@ -40,74 +40,35 @@ export default async function handler(req, res) {
     const msgLower = fullMessage.toLowerCase();
     const pkg = package_name ? package_name.toLowerCase() : "";
 
-    // --- 2. LOGIC DETEKSI SUMBER APLIKASI (YANG KAMU CARI) ---
+    // --- 2. LOGIC DETEKSI SUMBER APLIKASI ---
     let source = "Unknown App";
     let icon = "📱";
 
-    if (pkg.includes("orderquota")) {
-      source = "OrderQuota QRIS";
-      icon = "🏪";
-    }
-    else if (pkg.includes("gobiz")) {
-      source = "GoBiz / GoPay Merchant";
-      icon = "🏪";
-    } 
-    else if ((pkg.includes("gojek") || pkg.includes("gopay")) && (msgLower.includes("qris") || msgLower.includes("merchant"))) {
-      source = "GoPay QRIS";
-      icon = "🏪";
-    }
-    else if (pkg.includes("gojek") || pkg.includes("gopay")) {
-      source = "GOPAY Personal";
-      icon = "🟢";
-    }
-    else if (pkg.includes("dana")) {
-      source = "DANA";
-      icon = "🔵";
-    }
-    else if (pkg.includes("ovo")) {
-      source = "OVO";
-      icon = "🟣";
-    }
-    else if (pkg.includes("bca")) {
-      source = "BCA Mobile";
-      icon = "🏦";
-    }
-    else if (pkg.includes("livin") || pkg.includes("mandiri")) {
-      source = "Livin Mandiri";
-      icon = "🏦";
-    }
-    else if (pkg.includes("brimo")) {
-      source = "BRImo";
-      icon = "🏦";
-    }
-    else if (pkg.includes("seabank")) {
-      source = "SeaBank";
-      icon = "🟧";
-    }
-    else if (pkg.includes("neo")) {
-      source = "Neo Bank";
-      icon = "🦁";
-    }
-    else {
-      source = package_name || "Unknown"; 
-    }
+    if (pkg.includes("orderquota")) { source = "OrderQuota QRIS"; icon = "🏪"; }
+    else if (pkg.includes("gobiz")) { source = "GoBiz / GoPay Merchant"; icon = "🏪"; } 
+    else if ((pkg.includes("gojek") || pkg.includes("gopay")) && (msgLower.includes("qris") || msgLower.includes("merchant"))) { source = "GoPay QRIS"; icon = "🏪"; }
+    else if (pkg.includes("gojek") || pkg.includes("gopay")) { source = "GOPAY Personal"; icon = "🟢"; }
+    else if (pkg.includes("dana")) { source = "DANA"; icon = "🔵"; }
+    else if (pkg.includes("ovo")) { source = "OVO"; icon = "🟣"; }
+    else if (pkg.includes("bca")) { source = "BCA Mobile"; icon = "🏦"; }
+    else if (pkg.includes("livin") || pkg.includes("mandiri")) { source = "Livin Mandiri"; icon = "🏦"; }
+    else if (pkg.includes("brimo")) { source = "BRImo"; icon = "🏦"; }
+    else if (pkg.includes("seabank")) { source = "SeaBank"; icon = "🟧"; }
+    else if (pkg.includes("neo")) { source = "Neo Bank"; icon = "🦁"; }
+    else { source = package_name || "Unknown"; }
 
-    // --- 3. LOGIC PARSING NOMINAL CANGGIH (PEMBERSIH KOMA) ---
-    // Mencari "Rp" diikuti angka, mengabaikan spasi/titik error
+    // --- 3. LOGIC PARSING NOMINAL CANGGIH ---
     const nominalMatch = fullMessage.match(/Rp[\s.]*([\d,.]+)/i);
     let nominalReceived = 0;
     
     if (nominalMatch) {
       let rawString = nominalMatch[1];
-      // Buang ,00 di belakang
       rawString = rawString.replace(/[,.]00$/g, ''); 
-      // Ambil angka saja
       let cleanString = rawString.replace(/[^0-9]/g, '');
       nominalReceived = parseInt(cleanString);
     }
 
     // --- 4. CEK DATABASE (MATCHING) ---
-    // Mundur 1 jam ke belakang
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
 
     const paidOrder = await Order.findOne({ 
@@ -124,11 +85,22 @@ export default async function handler(req, res) {
       statusLaporan = `✅ LUNAS! (ID: ${paidOrder.order_id})`;
     }
 
-    // --- 5. KIRIM TELEGRAM (DENGAN IKON & SOURCE) ---
+    // --- 5. TAMBAHAN FITUR JAM (WIB) ---
+    const waktuWIB = new Date().toLocaleString('id-ID', { 
+      timeZone: 'Asia/Jakarta',
+      hour: '2-digit', 
+      minute: '2-digit',
+      second: '2-digit',
+      day: 'numeric',
+      month: 'short'
+    });
+
+    // --- 6. KIRIM TELEGRAM (LENGKAP) ---
     const textTelegram = `
 ${icon} *${source}*
 💰 *TERIMA: Rp ${nominalReceived.toLocaleString()}*
 -----------------------------
+⏰ Waktu: ${waktuWIB} WIB
 📦 Order: ${paidOrder ? paidOrder.product_name : '-'}
 👤 Kontak: ${paidOrder ? paidOrder.customer_contact : '-'}
 📝 Status: ${statusLaporan}

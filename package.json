@@ -1,9 +1,8 @@
 {
-  "name": "wago-store",
+  "name": "wago-payment-gateway",
   "version": "1.0.0",
   "dependencies": {
     "mongoose": "^8.0.0",
-    "qrcode": "^1.5.3",
-    "nodemailer": "^6.9.0"
+    "qrcode": "^1.5.3"
   }
 }

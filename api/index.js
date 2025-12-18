@@ -10,7 +10,6 @@ const OrderSchema = new mongoose.Schema({
   unique_code: Number,
   total_pay: Number,
   status: { type: String, default: 'UNPAID' },
-  qris_string: String,
   created_at: { type: Date, default: Date.now }
 });
 
@@ -23,58 +22,118 @@ export default async function handler(req, res) {
   const chatId = process.env.TELEGRAM_CHAT_ID;
   const secretKey = process.env.SECRET_KEY;
   
-  const { package_name, title, text, big_text, secret } = req.body;
+  // Ambil semua data dari Macrodroid
+  const { secret, package_name, message, title, text, big_text } = req.body;
 
-  if (secret !== secretKey) return res.status(401).json({ error: 'Salah Secret' });
+  // 1. Validasi Password
+  if (secret !== secretKey) {
+    return res.status(401).json({ error: 'Unauthorized: Salah Secret Key' });
+  }
 
   try {
     if (mongoose.connection.readyState !== 1) {
       await mongoose.connect(MONGODB_URI);
     }
 
-    const fullMessage = `${title || ''} ${text || ''} ${big_text || ''}`;
-    
-    // --- PERBAIKAN: PEMBERSIH ANGKA RUPIAH ---
-    const nominalMatch = fullMessage.match(/Rp\s?[\d,.]+/i);
+    // Gabungkan teks pesan untuk analisa
+    const fullMessage = `${message || ''} ${title || ''} ${text || ''} ${big_text || ''}`;
+    const msgLower = fullMessage.toLowerCase();
+    const pkg = package_name ? package_name.toLowerCase() : "";
+
+    // --- 2. LOGIC DETEKSI SUMBER APLIKASI (YANG KAMU CARI) ---
+    let source = "Unknown App";
+    let icon = "📱";
+
+    if (pkg.includes("orderquota")) {
+      source = "OrderQuota QRIS";
+      icon = "🏪";
+    }
+    else if (pkg.includes("gobiz")) {
+      source = "GoBiz / GoPay Merchant";
+      icon = "🏪";
+    } 
+    else if ((pkg.includes("gojek") || pkg.includes("gopay")) && (msgLower.includes("qris") || msgLower.includes("merchant"))) {
+      source = "GoPay QRIS";
+      icon = "🏪";
+    }
+    else if (pkg.includes("gojek") || pkg.includes("gopay")) {
+      source = "GOPAY Personal";
+      icon = "🟢";
+    }
+    else if (pkg.includes("dana")) {
+      source = "DANA";
+      icon = "🔵";
+    }
+    else if (pkg.includes("ovo")) {
+      source = "OVO";
+      icon = "🟣";
+    }
+    else if (pkg.includes("bca")) {
+      source = "BCA Mobile";
+      icon = "🏦";
+    }
+    else if (pkg.includes("livin") || pkg.includes("mandiri")) {
+      source = "Livin Mandiri";
+      icon = "🏦";
+    }
+    else if (pkg.includes("brimo")) {
+      source = "BRImo";
+      icon = "🏦";
+    }
+    else if (pkg.includes("seabank")) {
+      source = "SeaBank";
+      icon = "🟧";
+    }
+    else if (pkg.includes("neo")) {
+      source = "Neo Bank";
+      icon = "🦁";
+    }
+    else {
+      source = package_name || "Unknown"; 
+    }
+
+    // --- 3. LOGIC PARSING NOMINAL CANGGIH (PEMBERSIH KOMA) ---
+    // Mencari "Rp" diikuti angka, mengabaikan spasi/titik error
+    const nominalMatch = fullMessage.match(/Rp[\s.]*([\d,.]+)/i);
     let nominalReceived = 0;
     
     if (nominalMatch) {
-      // Hilangkan ",00" atau ".00" di belakang agar tidak terbacanya jutaan
-      let rawString = nominalMatch[0].replace(/[,.]00$/g, ''); 
+      let rawString = nominalMatch[1];
+      // Buang ,00 di belakang
+      rawString = rawString.replace(/[,.]00$/g, ''); 
       // Ambil angka saja
-      nominalReceived = parseInt(rawString.replace(/[^0-9]/g, ''));
+      let cleanString = rawString.replace(/[^0-9]/g, '');
+      nominalReceived = parseInt(cleanString);
     }
 
-    // --- CARI ORDER YANG COCOK ---
-    // Syarat:
-    // 1. Status UNPAID
-    // 2. Nominal sama persis
-    // 3. Dibuat dalam 1 JAM TERAKHIR (Expired Check)
+    // --- 4. CEK DATABASE (MATCHING) ---
+    // Mundur 1 jam ke belakang
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
 
     const paidOrder = await Order.findOne({ 
       status: 'UNPAID', 
       total_pay: nominalReceived,
-      created_at: { $gte: oneHourAgo } // Harus lebih baru dari 1 jam lalu
+      created_at: { $gte: oneHourAgo } 
     });
 
-    let statusLaporan = "❌ Tidak ada tagihan valid (Mungkin Expired/Topup Biasa)";
+    let statusLaporan = "❌ UNPAID / Expired / Nominal Salah";
     
     if (paidOrder) {
       paidOrder.status = 'PAID';
       await paidOrder.save();
-      statusLaporan = `✅ LUNAS! Order ID: ${paidOrder.order_id}`;
+      statusLaporan = `✅ LUNAS! (ID: ${paidOrder.order_id})`;
     }
 
-    // KIRIM KE TELEGRAM
+    // --- 5. KIRIM TELEGRAM (DENGAN IKON & SOURCE) ---
     const textTelegram = `
-💰 *UANG MASUK: Rp ${nominalReceived.toLocaleString()}*
+${icon} *${source}*
+💰 *TERIMA: Rp ${nominalReceived.toLocaleString()}*
 -----------------------------
-📦 Produk: ${paidOrder ? paidOrder.product_name : '-'}
-👤 Pembeli: ${paidOrder ? paidOrder.customer_contact : '-'}
+📦 Order: ${paidOrder ? paidOrder.product_name : '-'}
+👤 Kontak: ${paidOrder ? paidOrder.customer_contact : '-'}
 📝 Status: ${statusLaporan}
 -----------------------------
-_Msg: ${fullMessage.substring(0, 50)}..._
+🔍 _Raw: ${fullMessage.substring(0, 100)}_
     `;
 
     await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
@@ -83,7 +142,12 @@ _Msg: ${fullMessage.substring(0, 50)}..._
       body: JSON.stringify({ chat_id: chatId, text: textTelegram, parse_mode: 'Markdown' })
     });
 
-    return res.status(200).json({ status: 'success', match: !!paidOrder });
+    return res.status(200).json({ 
+      status: 'success', 
+      source: source,
+      nominal: nominalReceived,
+      match: !!paidOrder 
+    });
 
   } catch (error) {
     console.error("Webhook Error:", error);

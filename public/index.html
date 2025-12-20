@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wago id Payment</title>
+    <title>Secure Payment</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
     <style>
@@ -23,7 +23,6 @@
             <div id="logoContainer" class="hidden mb-3">
                 <img id="storeLogo" src="" class="h-16 w-16 mx-auto rounded-xl shadow-sm object-contain bg-white border border-gray-100 p-1">
             </div>
-            
             <div id="defaultIcon" class="text-4xl mb-2">💎</div>
 
             <h1 id="storeName" class="text-xl font-extrabold text-gray-800 tracking-tight">Loading...</h1>
@@ -39,8 +38,8 @@
                     <input type="text" id="productName" class="w-full mt-1 p-3 bg-gray-50 border rounded-xl text-sm font-semibold text-gray-700 outline-none" readonly>
                 </div>
                 <div class="grid grid-cols-2 gap-2">
-                    <input type="number" id="customerWa" placeholder="No. WhatsApp" class="p-3 border border-blue-100 rounded-xl text-sm outline-none focus:border-blue-500 transition">
-                    <input type="email" id="customerEmail" placeholder="Email" class="p-3 border border-blue-100 rounded-xl text-sm outline-none focus:border-blue-500 transition">
+                    <input type="number" id="customerWa" placeholder="WhatsApp (Opsional)" class="p-3 border border-blue-100 rounded-xl text-sm outline-none focus:border-blue-500 transition">
+                    <input type="email" id="customerEmail" placeholder="Email (Wajib)" class="p-3 border border-blue-100 rounded-xl text-sm outline-none focus:border-blue-500 transition">
                 </div>
                 <div>
                     <label class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Total Bayar (Rp)</label>
@@ -66,7 +65,7 @@
                     </div>
                 </div>
 
-                <button onclick="checkout()" id="btnBayar" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl shadow-lg mt-4 transition-all transform active:scale-95">
+                <button type="button" onclick="checkout()" id="btnBayar" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl shadow-lg mt-4 transition-all transform active:scale-95">
                     BAYAR SEKARANG
                 </button>
             </div>
@@ -101,29 +100,26 @@
     </div>
 
     <script>
-        // VARIABLE GLOBAL
         let returnUrl = ""; 
         let refId = ""; 
 
         window.onload = function() {
             const params = new URLSearchParams(window.location.search);
             
-            // 1. TANGKAP LINK KEMBALI & ID REF
+            // 1. Tangkap Link & ID
             returnUrl = params.get('return') || params.get('callback') || document.referrer || "";
             refId = params.get('ref_id') || "";
 
-            // 2. SETUP TAMPILAN TOKO
+            // 2. Setup Tampilan
             const storeName = decodeURIComponent(params.get('store') || "Wago Store");
             document.getElementById('storeName').innerText = storeName;
 
-            // 3. AUTO LOGO (Otomatis ambil favicon dari website asal)
+            // 3. Auto Logo
             let logoSrc = params.get('logo') || ""; 
             if (!logoSrc && returnUrl) {
                 try {
-                    // Cek apakah url valid
                     let safeUrl = returnUrl.startsWith('http') ? returnUrl : 'https://' + returnUrl;
                     const domain = new URL(safeUrl).hostname;
-                    // Pakai Google Favicon API
                     logoSrc = `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
                 } catch(e) {}
             }
@@ -131,39 +127,30 @@
             if (logoSrc) {
                 document.getElementById('storeLogo').src = logoSrc;
                 document.getElementById('logoContainer').classList.remove('hidden');
-                document.getElementById('defaultIcon').classList.add('hidden'); // Sembunyikan icon default
+                document.getElementById('defaultIcon').classList.add('hidden');
             }
 
-            // Update Teks Tombol Kembali
             if(storeName && storeName !== "Wago Store") {
                 document.getElementById('btnBackStore').innerText = "Kembali ke " + storeName;
             }
 
-            // 4. AUTO FILL FORM
-            document.getElementById('productName').value = decodeURIComponent(params.get('prod')) || "Produk Pilihan";
+            // 4. Auto Fill
+            document.getElementById('productName').value = decodeURIComponent(params.get('prod')) || "Produk";
             const price = parseInt(params.get('price')) || 1000;
             document.getElementById('price').value = price;
             
             if(params.get('wa')) document.getElementById('customerWa').value = params.get('wa');
             if(params.get('email')) document.getElementById('customerEmail').value = params.get('email');
             
-            // Tampilkan Bank jika harga > 100rb
             if(price >= 100000) document.getElementById('bankOptions').classList.remove('hidden');
         };
 
-        // FUNGSI KEMBALI KE TOKO
         function goBackToStore() {
-            if (!returnUrl) {
-                alert("Link tujuan tidak ditemukan!");
-                return;
-            }
-            if (!returnUrl.startsWith('http://') && !returnUrl.startsWith('https://')) {
-                returnUrl = 'https://' + returnUrl;
-            }
+            if (!returnUrl) return alert("Link tujuan tidak ditemukan!");
+            if (!returnUrl.startsWith('http')) returnUrl = 'https://' + returnUrl;
             window.location.href = returnUrl;
         }
 
-        // FUNGSI PILIH METODE
         function selectMethod(m) {
             document.getElementById('paymentMethod').value = m;
             document.querySelectorAll('.payment-card').forEach(c => {
@@ -175,19 +162,20 @@
             sel.querySelector('.radio-ui div').classList.remove('hidden');
         }
 
-        // FUNGSI CHECKOUT
         async function checkout() {
             const btn = document.getElementById('btnBayar');
             const data = {
                 product_name: document.getElementById('productName').value,
                 price: document.getElementById('price').value,
-                customer_contact: document.getElementById('customerWa').value,
+                // WA JADI OPSIONAL (Kalau kosong, isi strip)
+                customer_contact: document.getElementById('customerWa').value || "-", 
                 customer_email: document.getElementById('customerEmail').value,
                 method: document.getElementById('paymentMethod').value,
-                ref_id: refId // Kirim ID Titipan
+                ref_id: refId
             };
 
-            if(!data.customer_contact || !data.customer_email) return alert("Mohon lengkapi No. WA dan Email!");
+            // HANYA CEK EMAIL
+            if(!data.customer_email) return alert("Mohon isi Email untuk pengiriman bukti bayar!");
             
             btn.innerText = "Memproses...";
             btn.disabled = true;
@@ -197,7 +185,6 @@
                 const d = await res.json();
                 
                 if(d.status === 'success') {
-                    // Pindah ke Step 2
                     document.getElementById('step1').classList.add('hidden');
                     document.getElementById('step2').classList.remove('hidden');
                     
@@ -215,13 +202,12 @@
                     startCheckingStatus(d.order_id);
                 }
             } catch(e) { 
-                alert("Gagal memproses pesanan. Cek koneksi internet."); 
+                alert("Gagal koneksi. Coba lagi."); 
                 btn.disabled = false; 
                 btn.innerText = "BAYAR SEKARANG"; 
             }
         }
 
-        // TIMER MUNDUR
         function startTimer(duration) {
             let t = duration;
             setInterval(() => {
@@ -231,7 +217,6 @@
             }, 1000);
         }
 
-        // CEK STATUS OTOMATIS
         function startCheckingStatus(id) {
             const checker = setInterval(async () => {
                 try {
@@ -239,7 +224,6 @@
                     const d = await res.json();
                     if(d.status === 'PAID') {
                         clearInterval(checker);
-                        // Pindah ke Step 3 (Lunas)
                         document.getElementById('step2').classList.add('hidden');
                         document.getElementById('step3').classList.remove('hidden');
                     }

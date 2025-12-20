@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Secure Payment</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
     <style>
         body{font-family:'Inter',sans-serif;}
         @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
@@ -93,21 +93,21 @@
     </div>
 
     <script>
-        // Variable untuk menyimpan link web asal
+        // Variable Global untuk Link Balik
         let returnUrl = ""; 
 
         window.onload = function() {
             const params = new URLSearchParams(window.location.search);
             
             // 1. AMBIL LINK RETURN (AUTO DETECT)
-            // Prioritas: Parameter 'return' > 'callback' > Default
+            // Prioritas: Parameter 'return' -> 'callback'
             returnUrl = params.get('return') || params.get('callback') || "";
 
             // 2. AMBIL INFO TOKO
             const storeName = decodeURIComponent(params.get('store') || "Wago Store");
             document.getElementById('storeName').innerText = "💎 " + storeName;
             
-            // Update tombol kembali agar ada nama tokonya
+            // Update Teks Tombol agar sesuai nama toko
             if(storeName && storeName !== "Wago Store") {
                 document.getElementById('btnBackStore').innerText = "Kembali ke " + storeName;
             }
@@ -119,23 +119,32 @@
             if(params.get('wa')) document.getElementById('customerWa').value = params.get('wa');
             if(params.get('email')) document.getElementById('customerEmail').value = params.get('email');
             
-            // Tampilkan Bank jika > 100k
+            // Tampilkan Bank jika > 100rb
             if(price >= 100000) document.getElementById('bankOptions').classList.remove('hidden');
         };
 
-        // --- FUNGSI TOMBOL KEMBALI PINTAR ---
+        // --- FUNGSI TOMBOL KEMBALI (YANG DIPERBAIKI) ---
         function goBackToStore() {
-            if (returnUrl && returnUrl.startsWith('http')) {
-                // Jika ada link return yang valid, buka link tersebut
-                window.location.href = returnUrl;
-            } else {
-                // Jika tidak ada, coba tombol 'Back' browser atau reload
+            console.log("Klik Back. URL:", returnUrl);
+
+            // A. Cek apakah ada link?
+            if (!returnUrl) {
+                // Jika kosong, coba pakai fitur Back browser
                 if (document.referrer) {
                     window.history.back();
                 } else {
-                    location.reload(); // Fallback terakhir
+                    alert("Link tujuan tidak ditemukan di URL (param &return=...)");
                 }
+                return;
             }
+
+            // B. Auto-Fix: Tambahkan https:// jika lupa ditulis
+            if (!returnUrl.startsWith('http://') && !returnUrl.startsWith('https://')) {
+                returnUrl = 'https://' + returnUrl;
+            }
+
+            // C. Pindah Halaman
+            window.location.href = returnUrl;
         }
 
         function selectMethod(m) {
@@ -181,7 +190,7 @@
                     startTimer(3600);
                     startCheckingStatus(resData.order_id);
                 }
-            } catch(e) { alert("Gagal koneksi"); btn.disabled = false; btn.innerText = "BELI SEKARANG"; }
+            } catch(e) { alert("Gagal koneksi server"); btn.disabled = false; btn.innerText = "BELI SEKARANG"; }
         }
 
         function startTimer(duration) {

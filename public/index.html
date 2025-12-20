@@ -23,8 +23,10 @@
             <div id="logoContainer" class="hidden mb-3">
                 <img id="storeLogo" src="" class="h-16 w-16 mx-auto rounded-xl shadow-sm object-contain bg-white border border-gray-100 p-1">
             </div>
+            
+            <div id="defaultIcon" class="text-4xl mb-2">💎</div>
 
-            <h1 id="storeName" class="text-xl font-extrabold text-gray-800 tracking-tight">💎 Loading...</h1>
+            <h1 id="storeName" class="text-xl font-extrabold text-gray-800 tracking-tight">Loading...</h1>
             <p class="text-xs text-gray-400 font-medium">Secure Payment Gateway</p>
         </div>
 
@@ -85,57 +87,60 @@
                 <svg class="w-12 h-12 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
             </div>
             <h2 class="text-3xl font-black text-gray-800 mb-2">LUNAS!</h2>
-            <p class="text-sm text-gray-500 mb-8 px-4">Pembayaran berhasil. Pesanan diproses otomatis.</p>
+            <p class="text-sm text-gray-500 mb-6 px-4">Pembayaran berhasil. Pesanan diproses otomatis.</p>
+            
             <button onclick="goBackToStore()" id="btnBackStore" class="w-full bg-gray-900 hover:bg-black text-white px-8 py-4 rounded-xl font-bold shadow-lg transition-transform hover:-translate-y-1">
                 Kembali ke Toko
             </button>
+
+            <p id="debugUrl" class="mt-4 text-[10px] text-red-400 font-mono bg-red-50 p-2 rounded border border-red-200 break-all">
+                Debug: Menunggu parameter URL...
+            </p>
         </div>
 
     </div>
 
     <script>
+        // VARIABLE GLOBAL
         let returnUrl = ""; 
 
         window.onload = function() {
             const params = new URLSearchParams(window.location.search);
-            returnUrl = params.get('return') || params.get('callback') || "";
-            const storeName = decodeURIComponent(params.get('store') || "Wago Store");
-
-            // --- 🚀 LOGIKA AUTO LOGO ---
-            let logoSrc = "";
             
-            // 1. Kalau ada parameter return, ambil domainnya
-            if (returnUrl) {
-                try {
-                    // Tambah https jika belum ada agar URL constructor tidak error
-                    let safeUrl = returnUrl.startsWith('http') ? returnUrl : 'https://' + returnUrl;
-                    const urlObj = new URL(safeUrl);
-                    const domain = urlObj.hostname;
-                    
-                    // Gunakan Google Favicon Service (Gratis)
-                    logoSrc = `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
-                } catch(e) { console.log("Gagal ambil logo domain"); }
-            }
+            // 1. TANGKAP LINK TUJUAN
+            // Cek parameter 'return', kalau gak ada cek 'callback', kalau gak ada cek 'referrer'
+            returnUrl = params.get('return') || params.get('callback') || document.referrer || "";
+            
+            // Tampilkan info debug di layar agar jelas
+            const debugText = returnUrl ? "Link Tujuan: " + returnUrl : "⚠️ URL KOSONG! Tambahkan &return=... di link.";
+            document.getElementById('debugUrl').innerText = debugText;
 
-            // 2. Tampilkan Logo
-            const logoImg = document.getElementById('storeLogo');
-            const logoCont = document.getElementById('logoContainer');
-            const title = document.getElementById('storeName');
+            // 2. SETUP TAMPILAN TOKO
+            const storeName = decodeURIComponent(params.get('store') || "Wago Store");
+            document.getElementById('storeName').innerText = storeName;
+
+            // 3. AUTO LOGO (Canggih)
+            let logoSrc = params.get('logo') || ""; 
+            if (!logoSrc && returnUrl) {
+                try {
+                    // Ambil domain dari returnUrl untuk cari favicon
+                    let safeUrl = returnUrl.startsWith('http') ? returnUrl : 'https://' + returnUrl;
+                    const domain = new URL(safeUrl).hostname;
+                    logoSrc = `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
+                } catch(e) {}
+            }
 
             if (logoSrc) {
-                logoImg.src = logoSrc;
-                logoCont.classList.remove('hidden');
-                title.innerText = storeName; // Hapus emoji karena sudah ada logo
-            } else {
-                title.innerText = "💎 " + storeName; // Pakai emoji default
+                document.getElementById('storeLogo').src = logoSrc;
+                document.getElementById('logoContainer').classList.remove('hidden');
+                document.getElementById('defaultIcon').classList.add('hidden'); // Sembunyikan icon default
             }
 
-            // Update nama tombol
             if(storeName && storeName !== "Wago Store") {
                 document.getElementById('btnBackStore').innerText = "Kembali ke " + storeName;
             }
 
-            // AUTO FILL FORM
+            // 4. AUTO FILL FORM
             document.getElementById('productName').value = decodeURIComponent(params.get('prod')) || "Produk";
             const price = parseInt(params.get('price')) || 1000;
             document.getElementById('price').value = price;
@@ -145,16 +150,20 @@
             if(price >= 100000) document.getElementById('bankOptions').classList.remove('hidden');
         };
 
+        // FUNGSI KLIK TOMBOL BALIK
         function goBackToStore() {
             if (!returnUrl) {
-                if (document.referrer) window.history.back();
-                else alert("Link tujuan tidak ditemukan di URL");
+                alert("Link tujuan tidak ditemukan! Pastikan URL mengandung &return=https://websitekamu.com");
                 return;
             }
-            if (!returnUrl.startsWith('http')) returnUrl = 'https://' + returnUrl;
+            // Auto-fix https
+            if (!returnUrl.startsWith('http://') && !returnUrl.startsWith('https://')) {
+                returnUrl = 'https://' + returnUrl;
+            }
             window.location.href = returnUrl;
         }
 
+        // FUNGSI PILIH METODE
         function selectMethod(m) {
             document.getElementById('paymentMethod').value = m;
             document.querySelectorAll('.payment-card').forEach(c => {
@@ -166,6 +175,7 @@
             sel.querySelector('.radio-ui div').classList.remove('hidden');
         }
 
+        // FUNGSI CHECKOUT
         async function checkout() {
             const btn = document.getElementById('btnBayar');
             const data = {

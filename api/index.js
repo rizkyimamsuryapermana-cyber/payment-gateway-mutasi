@@ -65,11 +65,40 @@ export default async function handler(req, res) {
       }
     }
 
-    // TELEGRAM NOTIF
+    // --- 5. LAPOR KE TELEGRAM (FORMAT RAPI & PROFESIONAL) ---
     const botToken = process.env.TELEGRAM_BOT_TOKEN;
     const chatId = process.env.TELEGRAM_CHAT_ID;
+    
     if(botToken && chatId) {
-        const textTele = `${icon} *${source}*\n💰 *Rp ${nominal.toLocaleString()}*\n📝 Status: ${statusText}\n🆔 Ref ID: ${paidOrder ? paidOrder.ref_id : '-'}`;
+        // Siapkan Data agar tidak error kalau null
+        const pName = paidOrder ? paidOrder.product_name : 'Menunggu Order...';
+        const pContact = paidOrder ? paidOrder.customer_contact : '-';
+        const pRef = paidOrder ? paidOrder.ref_id : '-';
+        const pOid = paidOrder ? paidOrder.order_id : '-';
+        const pEmail = paidOrder ? paidOrder.customer_email : '-';
+
+        // Logika Status Icon
+        const statusIcon = paidOrder ? '✅' : '⚠️';
+        const statusLabel = paidOrder ? 'LUNAS / PAID' : 'BELUM COCOK';
+
+        // Format Pesan Telegram
+        const textTele = `
+${icon} *MUTASI ${source.toUpperCase()}*
+────────────────────
+💰 *Rp ${nominal.toLocaleString('id-ID')}*
+────────────────────
+📦 *${pName}*
+
+👤 Kontak : ${pContact}
+📧 Email  : ${pEmail}
+🆔 Ref ID : \`${pRef}\`
+🧾 Ord ID : \`${pOid}\`
+
+${statusIcon} *STATUS: ${statusLabel}*
+────────────────────
+🔍 _Pesan Bank: ${fullMsg.substring(0, 40).replace(/\n/g, ' ')}..._
+        `.trim();
+
         await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },

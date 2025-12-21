@@ -7,36 +7,70 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
+        /* SETUP BACKGROUND FULL SCREEN */
         body { 
             font-family: 'Plus Jakarta Sans', sans-serif; 
             background-color: #0f172a;
+            /* Background Gradient Mewah */
             background-image: 
                 radial-gradient(at 0% 0%, hsla(253,16%,7%,1) 0, transparent 50%), 
                 radial-gradient(at 50% 0%, hsla(225,39%,30%,1) 0, transparent 50%), 
                 radial-gradient(at 100% 0%, hsla(339,49%,30%,1) 0, transparent 50%);
-            background-size: 100% 100%;
+            background-size: cover;
+            background-position: center;
             background-attachment: fixed;
+            background-repeat: no-repeat;
             color: #334155;
+            /* Mencegah scroll pada body, scroll hanya di dalam konten */
+            overflow: hidden; 
+            height: 100dvh;
+            width: 100vw;
+            margin: 0;
         }
-        .glass-panel { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
-        .glass-card { background: rgba(255, 255, 255, 0.6); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.8); }
+        
+        /* Glass Effect */
+        .glass-panel { 
+            background: rgba(255, 255, 255, 0.92); 
+            backdrop-filter: blur(20px); 
+            -webkit-backdrop-filter: blur(20px); 
+        }
+        
+        /* Animations */
         .fade-enter { animation: fadeEnter 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
         @keyframes fadeEnter { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+        .fade-exit { animation: fadeExit 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
+        @keyframes fadeExit { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(0.95) translateY(20px); } }
+
+        .modal-enter { animation: modalEnter 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+        @keyframes modalEnter { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+
+        /* Receipt Zigzag */
         .receipt-bottom {
             background: linear-gradient(45deg, transparent 33.333%, #ffffff 33.333%, #ffffff 66.667%, transparent 66.667%), 
                         linear-gradient(-45deg, transparent 33.333%, #ffffff 33.333%, #ffffff 66.667%, transparent 66.667%);
             background-size: 16px 32px; background-position: 0 100%; height: 16px;
         }
+
+        /* Hide Scrollbar */
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        ::selection { background: #6366f1; color: white; }
     </style>
 </head>
-<body class="min-h-screen flex items-center justify-center p-0 sm:p-6 overflow-hidden">
+<body class="flex items-center justify-center">
 
-    <div class="absolute w-[500px] h-[500px] bg-indigo-500/30 rounded-full blur-[100px] pointer-events-none"></div>
+    <div class="hidden sm:block absolute w-[600px] h-[600px] bg-indigo-500/20 rounded-full blur-[120px] pointer-events-none"></div>
 
-    <div class="w-full sm:max-w-[420px] h-[100dvh] sm:h-[90vh] sm:max-h-[850px] glass-panel sm:rounded-[2.5rem] shadow-2xl shadow-black/40 overflow-hidden relative flex flex-col border border-white/40 sm:ring-8 sm:ring-white/10 z-10">
+    <div id="main-container" class="
+        w-full h-[100dvh] 
+        sm:w-full sm:max-w-[480px] sm:h-[90vh] sm:max-h-[850px] 
+        glass-panel 
+        sm:rounded-[2.5rem] 
+        sm:shadow-2xl sm:shadow-black/40 
+        overflow-hidden relative flex flex-col 
+        sm:border sm:border-white/40 
+        sm:ring-8 sm:ring-white/5 
+        z-10 transition-all duration-300">
         
         <header class="px-6 py-5 bg-white/80 border-b border-slate-100/60 flex items-center justify-between backdrop-blur-xl sticky top-0 z-20">
             <div class="flex items-center gap-3">
@@ -52,7 +86,7 @@
                     </div>
                 </div>
             </div>
-            <button onclick="cancelPayment()" class="w-10 h-10 rounded-full bg-white flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 shadow-sm transition-all border border-slate-100 hover:shadow-md active:scale-95" title="Batalkan">
+            <button onclick="confirmCancel()" class="w-10 h-10 rounded-full bg-white flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 shadow-sm transition-all border border-slate-100 hover:shadow-md active:scale-95" title="Batalkan">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
             </button>
         </header>
@@ -62,6 +96,21 @@
 
         <footer id="action-area" class="p-6 bg-white/90 backdrop-blur-xl border-t border-slate-100 z-20 pb-8 sm:pb-6 shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.05)]">
             </footer>
+    </div>
+
+    <div id="custom-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-300 p-4">
+        <div class="bg-white p-6 rounded-[2rem] shadow-2xl w-full max-w-xs text-center transform scale-90 transition-transform duration-300 relative border border-white/50">
+            <div id="modal-icon" class="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl shadow-inner">⚠️</div>
+            <h3 id="modal-title" class="text-lg font-bold text-slate-800 mb-2">Konfirmasi</h3>
+            <p id="modal-msg" class="text-sm text-slate-500 mb-6 leading-relaxed">Apakah Anda yakin?</p>
+            <div class="grid grid-cols-2 gap-3" id="modal-actions">
+                <button onclick="closeModal()" class="py-3 rounded-xl font-bold text-slate-500 hover:bg-slate-50 border border-transparent hover:border-slate-200 transition-all text-sm">Batal</button>
+                <button id="modal-confirm-btn" class="py-3 rounded-xl font-bold text-white bg-red-500 hover:bg-red-600 shadow-lg shadow-red-500/30 transition-all text-sm">Ya, Keluar</button>
+            </div>
+             <div id="modal-alert-action" class="hidden">
+                <button onclick="closeModal()" class="w-full py-3 rounded-xl font-bold text-white bg-slate-900 hover:bg-black transition-all text-sm">OK, Mengerti</button>
+            </div>
+        </div>
     </div>
 
     <input type="hidden" id="productName">
@@ -85,9 +134,10 @@
             wa: "-",
             email: "guest@transaction.com",
             logoUrl: "",
-            timeoutMinutes: 60 // Default 60 menit
+            timeoutMinutes: 60
         };
 
+        // DATA PEMBAYARAN
         const paymentMethodsData = [
             { id: 'qris', name: 'QRIS', desc: 'Scan via GoPay, OVO, Dana', icon: '<svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4h2v-4zm-6 0H6.414a1 1 0 00-.707.293L4.293 16.707A1 1 0 004 17.414V20h4v-2.586a1 1 0 00-.293-.707L6.293 15.293zM20 5l-1.414-1.414A2 2 0 0017.172 3H6.828a2 2 0 00-1.414.586L4 5v14h16V5z"/></svg>' },
             { id: 'bca', name: 'Transfer Bank', desc: 'BCA (Cek Manual)', icon: '<svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z"/></svg>' }
@@ -97,8 +147,6 @@
 
         window.onload = function() {
             const params = new URLSearchParams(window.location.search);
-            
-            // 1. Capture Data
             state.returnUrl = params.get('return') || params.get('callback') || document.referrer || "";
             state.refId = params.get('ref_id') || "";
             state.storeName = decodeURIComponent(params.get('store') || "Wago Store");
@@ -107,20 +155,15 @@
             state.wa = params.get('wa') || "-";
             state.email = params.get('email') || "guest@transaction.com";
 
-            // 2. SMART TIMER LOGIC (Ambil dari URL)
             const urlTime = parseInt(params.get('time'));
-            if(urlTime && !isNaN(urlTime)) {
-                state.timeoutMinutes = urlTime; // Set sesuai URL
-            }
+            if(urlTime && !isNaN(urlTime)) state.timeoutMinutes = urlTime;
 
-            // 3. Set Inputs
             document.getElementById('productName').value = state.productName;
             document.getElementById('price').value = state.totalAmount;
             document.getElementById('customerWa').value = state.wa;
             document.getElementById('customerEmail').value = state.email;
             document.getElementById('headerStoreName').innerText = state.storeName;
             
-            // 4. Auto Logo
             state.logoUrl = params.get('logo') || "";
             if (!state.logoUrl && state.returnUrl) {
                 try {
@@ -141,7 +184,19 @@
         function renderStep1() {
             const content = document.getElementById('app-content');
             const actionArea = document.getElementById('action-area');
-            const methodsHtml = paymentMethodsData.map(method => `
+            
+            // Logic Hide BCA if < 100k
+            const minTransfer = 100000;
+            const availableMethods = paymentMethodsData.filter(m => {
+                if (m.id === 'bca' && state.totalAmount < minTransfer) return false;
+                return true;
+            });
+
+            if (!availableMethods.find(m => m.id === state.selectedMethod)) {
+                state.selectedMethod = availableMethods[0].id;
+            }
+
+            const methodsHtml = availableMethods.map(method => `
                 <div onclick="selectMethod('${method.id}')" 
                      class="group cursor-pointer relative p-4 rounded-2xl border transition-all duration-300 mb-3
                      ${state.selectedMethod === method.id ? 'bg-slate-800 border-slate-800 shadow-xl shadow-slate-200 ring-1 ring-slate-800 text-white scale-[1.01]' : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50 hover:shadow-md'}">
@@ -186,22 +241,15 @@
         function renderStep2(apiData) {
             const content = document.getElementById('app-content');
             const actionArea = document.getElementById('action-area');
-            
-            // Tampilan Timer (Penting)
             const isUrgent = state.timeoutMinutes <= 15;
             const timerColor = isUrgent ? 'bg-red-50 text-red-600 border-red-100' : 'bg-slate-50 text-slate-600 border-slate-100';
             
-            const timerHtml = `
-                <div class="inline-flex items-center gap-2 px-4 py-2 ${timerColor} rounded-full text-xs font-bold mb-8 border shadow-sm animate-pulse">
-                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                    Sisa Waktu <span id="timer" class="font-mono text-sm ml-1">--:--</span>
-                </div>
-            `;
+            const timerHtml = `<div class="inline-flex items-center gap-2 px-4 py-2 ${timerColor} rounded-full text-xs font-bold mb-8 border shadow-sm animate-pulse"><svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>Sisa Waktu <span id="timer" class="font-mono text-sm ml-1">--:--</span></div>`;
 
-            let paymentDisplay = "", instructionHtml = "";
+            let paymentDisplay = "";
             if (apiData.qr_image) {
                 paymentDisplay = `<div class="relative bg-white p-6 rounded-[2rem] shadow-2xl shadow-slate-200 border border-slate-100 mb-8 w-72 mx-auto group">
-                         <div class="absolute -top-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-slate-900 text-white px-4 py-1.5 rounded-full shadow-lg border border-slate-700 z-10"><span class="text-[10px] font-bold tracking-wider">SCAN QRIS</span></div>
+                        <div class="absolute -top-3 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-slate-900 text-white px-4 py-1.5 rounded-full shadow-lg border border-slate-700 z-10"><span class="text-[10px] font-bold tracking-wider">SCAN QRIS</span></div>
                         <div class="relative overflow-hidden rounded-2xl bg-white p-1 border-2 border-slate-100 group-hover:border-slate-200 transition-colors"><img src="${apiData.qr_image}" class="w-full rounded-xl"></div>
                         <div class="mt-5 flex items-center justify-center gap-2 pb-2"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/Logo_QRIS.svg/1200px-Logo_QRIS.svg.png" class="h-6 opacity-80"></div>
                     </div>`;
@@ -236,10 +284,9 @@
                     <button class="w-full py-4 bg-slate-100 text-slate-400 font-bold rounded-2xl cursor-not-allowed border border-slate-200 text-sm flex items-center justify-center gap-2">
                         <svg class="animate-spin h-4 w-4" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Mengecek Otomatis...
                     </button>
-                    <button onclick="cancelPayment()" class="w-full py-4 bg-white text-slate-500 hover:text-red-500 font-semibold rounded-2xl border border-slate-200 hover:bg-red-50 hover:border-red-100 transition-all text-sm shadow-sm">Batalkan Transaksi</button>
+                    <button onclick="confirmCancel()" class="w-full py-4 bg-white text-slate-500 hover:text-red-500 font-semibold rounded-2xl border border-slate-200 hover:bg-red-50 hover:border-red-100 transition-all text-sm shadow-sm">Batalkan Transaksi</button>
                 </div>`;
 
-            // MULAI TIMER SESUAI STATE.TIMEOUTMINUTES
             startTimer(state.timeoutMinutes * 60); 
             startCheckingStatus(apiData.order_id);
         }
@@ -292,8 +339,8 @@
                 const res = await fetch('/api/checkout', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data) });
                 const d = await res.json();
                 if(d.status === 'success') { state.totalAmount = d.total_pay; state.step = 2; renderStep2(d); } 
-                else { alert("Gagal: " + (d.error || "Unknown Error")); renderStep1(); }
-            } catch(e) { alert("Gagal koneksi ke server."); renderStep1(); }
+                else { showAlert("Gagal", d.error || "Unknown Error"); renderStep1(); }
+            } catch(e) { showAlert("Koneksi Gagal", "Cek internet Anda."); renderStep1(); }
         }
 
         function startTimer(duration) {
@@ -305,7 +352,7 @@
                 let m = parseInt(timer / 60, 10);
                 let s = parseInt(timer % 60, 10);
                 display.textContent = `${m < 10 ? "0" + m : m}:${s < 10 ? "0" + s : s}`;
-                if (--timer < 0) { clearInterval(state.timerInterval); alert("Waktu Pembayaran Habis"); location.reload(); }
+                if (--timer < 0) { clearInterval(state.timerInterval); showAlert("Waktu Habis", "Sesi pembayaran telah berakhir."); location.reload(); }
             }, 1000);
         }
 
@@ -319,13 +366,65 @@
             }, 3000);
         }
 
-        window.cancelPayment = () => {
-            if(state.step === 1) { if(state.returnUrl) window.location.href = state.returnUrl; else alert("Tidak ada link kembali."); } 
-            else { if(confirm("Batalkan transaksi ini?")) location.reload(); }
+        // --- CUSTOM MODAL & ACTIONS ---
+        const modal = document.getElementById('custom-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalMsg = document.getElementById('modal-msg');
+        const modalActions = document.getElementById('modal-actions');
+        const modalAlertAction = document.getElementById('modal-alert-action');
+        const modalConfirmBtn = document.getElementById('modal-confirm-btn');
+        let modalCallback = null;
+
+        function showConfirm(title, msg, onConfirm) {
+            modalTitle.innerText = title;
+            modalMsg.innerText = msg;
+            modalCallback = onConfirm;
+            modalActions.classList.remove('hidden');
+            modalAlertAction.classList.add('hidden');
+            openModal();
+        }
+
+        function showAlert(title, msg) {
+            modalTitle.innerText = title;
+            modalMsg.innerText = msg;
+            modalActions.classList.add('hidden');
+            modalAlertAction.classList.remove('hidden');
+            openModal();
+        }
+
+        function openModal() {
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            modal.querySelector('div').classList.add('modal-enter');
+            modal.querySelector('div').classList.remove('scale-90');
+        }
+
+        function closeModal() {
+            modal.classList.add('opacity-0', 'pointer-events-none');
+            modal.querySelector('div').classList.remove('modal-enter');
+            modal.querySelector('div').classList.add('scale-90');
+            modalCallback = null;
+        }
+
+        modalConfirmBtn.onclick = () => {
+            if(modalCallback) modalCallback();
+            closeModal();
+        };
+
+        window.confirmCancel = () => {
+            if(state.step === 1) { 
+                if(state.returnUrl) window.location.href = state.returnUrl; 
+                else showAlert("Info", "Tidak ada link kembali.");
+            } else {
+                showConfirm("Batalkan Transaksi?", "Sesi pembayaran ini akan dihentikan.", () => {
+                    const container = document.getElementById('main-container');
+                    container.classList.add('fade-exit');
+                    setTimeout(() => location.reload(), 350);
+                });
+            }
         };
 
         window.backToMerchant = () => {
-             if (!state.returnUrl) return alert("Link tujuan tidak ditemukan!");
+             if (!state.returnUrl) return showAlert("Error", "Link tujuan tidak ditemukan!");
              if (!state.returnUrl.startsWith('http')) state.returnUrl = 'https://' + state.returnUrl;
              window.location.href = state.returnUrl;
         };
